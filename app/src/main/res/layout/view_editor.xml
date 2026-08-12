@@ -104,4 +104,14 @@
 
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- Hierarchy tree panel (collapsed by default). Injected here to appear on the right side of the editor. -->
+    <include
+        android:id="@+id/view_tree_panel"
+        layout="@layout/view_tree_panel"
+        android:layout_width="260dp"
+        android:layout_height="match_parent"
+        android:layout_toEndOf="@+id/layout_palette"
+        android:layout_alignParentEnd="true"
+        android:visibility="gone" />
+
 </RelativeLayout>
