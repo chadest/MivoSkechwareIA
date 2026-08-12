@@ -1,49 +1,47 @@
 @@
-     public void initialize(ProjectFileBean projectFileBean) {
-         this.projectFileBean = projectFileBean;
-         isFabEnabled = projectFileBean.hasActivityOption(ProjectFileBean.OPTION_ACTIVITY_FAB);
-         viewEditor.initialize(sc_id, projectFileBean);
-         viewEditor.h();
-         viewProperty.a(sc_id, this.projectFileBean);
-         e();
-         i();
-+        // Initialize hierarchy tree panel (if included in layout)
+     @Override
+     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
+         super.onCreateOptionsMenu(menu, menuInflater);
+         menuInflater.inflate(R.menu.design_view_menu, menu);
+         menu.findItem(R.id.menu_view_redo).setEnabled(false);
+         menu.findItem(R.id.menu_view_undo).setEnabled(false);
+         if (projectFileBean != null) {
+             menu.findItem(R.id.menu_view_redo).setEnabled(cC.c(sc_id).f(projectFileBean.getXmlName()));
+             menu.findItem(R.id.menu_view_undo).setEnabled(cC.c(sc_id).g(projectFileBean.getXmlName()));
+         }
++        // adjust hierarchy toggle checked state if panel exists
 +        try {
-+            com.besome.sketch.editor.view.ViewTreePanel treePanel = viewEditor.findViewById(pro.sketchware.R.id.view_tree_panel);
-+            if (treePanel != null) {
-+                java.util.List<com.besome.sketch.beans.ViewBean> views = a.a.a.jC.a(sc_id).d(projectFileBean.getXmlName());
-+                treePanel.setViews(views);
-+                treePanel.setOnNodeClickListener(new com.besome.sketch.editor.view.ViewTreePanel.OnNodeClickListener() {
-+                    @Override
-+                    public void onNodeClick(com.besome.sketch.beans.ViewBean bean) {
-+                        if (bean != null) {
-+                            // reuse existing selection flow
-+                            c(bean);
-+                            viewProperty.e();
-+                        }
-+                    }
-+                });
++            View tree = viewEditor.findViewById(pro.sketchware.R.id.view_tree_panel);
++            if (tree != null) {
++                MenuItem item = menu.findItem(R.id.menu_view_hierarchy);
++                if (item != null) item.setChecked(tree.getVisibility() == View.VISIBLE);
 +            }
-+        } catch (Exception ex) {
-+            ex.printStackTrace();
++        } catch (Exception ignored) {
 +        }
-         invalidateOptionsMenu();
      }
 @@
-     public void i() {
-         invalidateOptionsMenu();
-         if (projectFileBean != null) {
-             b(jC.a(sc_id).d(projectFileBean.getXmlName()));
-             a(jC.a(sc_id).h(projectFileBean.getXmlName()));
-+            // Refresh tree panel views when layout is (re)loaded
+     @Override
+     public boolean onOptionsItemSelected(MenuItem item) {
+         int itemId = item.getItemId();
+         if (itemId == R.id.menu_view_redo) {
+             onRedo();
+         } else if (itemId == R.id.menu_view_undo) {
+             onUndo();
++        } else if (itemId == R.id.menu_view_hierarchy) {
++            // toggle hierarchy panel
 +            try {
-+                com.besome.sketch.editor.view.ViewTreePanel treePanel = viewEditor.findViewById(pro.sketchware.R.id.view_tree_panel);
-+                if (treePanel != null) {
-+                    java.util.List<com.besome.sketch.beans.ViewBean> views = a.a.a.jC.a(sc_id).d(projectFileBean.getXmlName());
-+                    treePanel.setViews(views);
++                View tree = viewEditor.findViewById(pro.sketchware.R.id.view_tree_panel);
++                if (tree != null) {
++                    int newVis = tree.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE;
++                    tree.setVisibility(newVis);
++                    item.setChecked(newVis == View.VISIBLE);
++                    if (newVis == View.VISIBLE && projectFileBean != null) {
++                        java.util.List<com.besome.sketch.beans.ViewBean> views = a.a.a.jC.a(sc_id).d(projectFileBean.getXmlName());
++                        ((com.besome.sketch.editor.view.ViewTreePanel) tree).setViews(views);
++                    }
 +                }
-+            } catch (Exception ex) {
-+                // swallow
++            } catch (Exception ignored) {
 +            }
          }
+         return true;
      }
