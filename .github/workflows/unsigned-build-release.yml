@@ -1,0 +1,72 @@
+name: unsigned-build-release
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a GitHub Release and attach the APK (true/false)'
+        required: false
+        default: 'true'
+jobs:
+  build-unsigned-apk:
+    name: Build unsigned release APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Remove release signing config (temporary)
+        run: |
+          # Backup
+          cp app/build.gradle app/build.gradle.bak || true
+          # Remove the signingConfig assignment inside release buildType to force an unsigned apk
+          sed -i '/signingConfig = signingConfigs.release/d' app/build.gradle
+
+      - name: Grant execute for Gradle wrapper
+        run: chmod +x ./gradlew
+
+      - name: Build release APK (unsigned)
+        run: ./gradlew clean assembleRelease --no-daemon
+
+      - name: Restore build.gradle
+        if: always()
+        run: |
+          if [ -f app/build.gradle.bak ]; then mv app/build.gradle.bak app/build.gradle; fi
+
+      - name: Find APK
+        id: find_apk
+        run: |
+          set -e
+          APK_PATH=$(find app/build/outputs -type f -name "*release*.apk" | head -n 1 || true)
+          if [ -z "$APK_PATH" ]; then echo "No APK found" ; exit 1 ; fi
+          echo "apk=$APK_PATH" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact (Actions) for quick download
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-release-apk
+          path: ${{ steps.find_apk.outputs.apk }}
+
+      - name: Create GitHub Release (optional)
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: unsigned-${{ github.run_id }}-${{ github.sha }}
+          release_name: "Unsigned build ${{ github.run_id }}"
+          draft: false
+          prerelease: true
+
+      - name: Upload APK to release
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.find_apk.outputs.apk }}
+          asset_name: app-release-unsigned.apk
+          asset_content_type: application/vnd.android.package-archive
